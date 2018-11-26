@@ -3,7 +3,6 @@
 const util = require('mapbox-gl/src/util/util');
 const ajax = require('mapbox-gl/src/util/ajax');
 const Evented = require('mapbox-gl/src/util/evented');
-const loadArcGISMapServer = require('./load_arcgis_mapserver');
 const TileBounds = require('mapbox-gl/src/source/tile_bounds');
 const Texture = require('mapbox-gl/src/render/texture');
 const helpers = require('./helpers');
@@ -54,36 +53,14 @@ class ArcGISTiledMapServiceSource extends Evented implements Source {
 
     load() {
         this.fire('dataloading', {dataType: 'source'});
-        loadArcGISMapServer(this._options, (err, metadata) => {
-            if (err) {
-                this.fire('error', err);
-            } else if (metadata) {
-                util.extend(this, metadata);
-
-                if (metadata.bounds) {
-                    this.tileBounds = new TileBounds(metadata.bounds, this.minzoom, this.maxzoom);
-                }
-
-            // `content` is included here to prevent a race condition where `Style#_updateSources` is called
-            // before the TileJSON arrives. this makes sure the tiles needed are loaded once TileJSON arrives
-            // ref: https://github.com/mapbox/mapbox-gl-js/pull/4347#discussion_r104418088
-            this.fire('data', {dataType: 'source', sourceDataType: 'metadata'});
-            this.fire('data', {dataType: 'source', sourceDataType: 'content'});
-            }
+        this.fire('data', {dataType: 'source', sourceDataType: 'metadata'});
+        this.fire('data', {dataType: 'source', sourceDataType: 'content'});
         });
     }
 
     onAdd(map: Map) {
         // set the urls
-        const baseUrl = this.url.split('?')[0];
-        this.tileUrl = `${baseUrl}/tile/{z}/{y}/{x}`;
-
-        const arcgisonline = new RegExp(/tiles.arcgis(online)?\.com/g);
-        if (arcgisonline.test(this.url)) {
-            this.tileUrl = this.tileUrl.replace('://tiles', '://tiles{s}');
-            this.subdomains = ['1', '2', '3', '4'];
-        }
-
+        this.tileUrl = this.url;
         if (this.token) {
             this.tileUrl += (`?token=${this.token}`);
         }
